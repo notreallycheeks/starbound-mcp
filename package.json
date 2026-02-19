@@ -1,0 +1,43 @@
+{
+  "name": "starbound-mcp",
+  "version": "0.1.0",
+  "description": "MCP server for Starbound and Frackin Universe modding — gives AI assistants deep knowledge of the modding API",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "starbound-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "seed": "tsx src/db/seed.ts",
+    "extract:vanilla": "tsx src/scripts/extract-vanilla.ts",
+    "extract:fu": "tsx src/scripts/extract-fu.ts",
+    "extract:openstarbound": "tsx src/scripts/extract-openstarbound.ts",
+    "extract:lua-docs": "tsx src/scripts/extract-lua-docs.ts",
+    "extract:all": "tsx src/db/seed.ts && tsx src/scripts/extract-openstarbound.ts -- --source-path ../OpenStarbound && tsx src/scripts/extract-lua-docs.ts -- --source-path ../OpenStarbound"
+  },
+  "keywords": [
+    "starbound",
+    "frackin-universe",
+    "mcp",
+    "model-context-protocol",
+    "modding",
+    "ai",
+    "gamedev"
+  ],
+  "author": "cheeks",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "better-sqlite3": "^11.7.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}
