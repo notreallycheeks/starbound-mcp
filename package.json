@@ -7,6 +7,14 @@
   "bin": {
     "starbound-mcp": "dist/index.js"
   },
+  "files": [
+    "dist/**/*.js",
+    "dist/**/*.d.ts",
+    "dist/**/*.js.map",
+    "starbound.db",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsx watch src/index.ts",
@@ -16,7 +24,8 @@
     "extract:fu": "tsx src/scripts/extract-fu.ts",
     "extract:openstarbound": "tsx src/scripts/extract-openstarbound.ts",
     "extract:lua-docs": "tsx src/scripts/extract-lua-docs.ts",
-    "extract:all": "tsx src/db/seed.ts && tsx src/scripts/extract-openstarbound.ts -- --source-path ../OpenStarbound && tsx src/scripts/extract-lua-docs.ts -- --source-path ../OpenStarbound"
+    "extract:all": "tsx src/db/seed.ts && tsx src/scripts/extract-openstarbound.ts -- --source-path ../OpenStarbound && tsx src/scripts/extract-lua-docs.ts -- --source-path ../OpenStarbound",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "starbound",
@@ -27,8 +36,13 @@
     "ai",
     "gamedev"
   ],
-  "author": "cheeks",
+  "author": "notreallycheeks",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/notreallycheeks/starbound-mcp.git"
+  },
+  "homepage": "https://github.com/notreallycheeks/starbound-mcp#readme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
     "better-sqlite3": "^11.7.0",

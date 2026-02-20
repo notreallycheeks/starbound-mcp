@@ -8,34 +8,113 @@ Stop guessing at JSON schemas and Lua functions. Let your AI *know* them.
 
 When you use an AI assistant (Claude, etc.) to help create Starbound mods, the AI typically guesses at the modding API based on scattered web results. This MCP server provides a curated, structured database of:
 
-- **Lua API functions** — every `world.*`, `player.*`, `entity.*`, `status.*`, `mcontroller.*`, `activeItem.*`, `animator.*`, `root.*`, `config.*` function with parameters, return types, and examples
-- **Asset schemas** — valid JSON fields for `.activeitem`, `.object`, `.item`, `.monstertype`, `.statuseffect`, `.biome`, `.projectile`, `.recipe`, `.tech`, and more
-- **Crafting recipes** — searchable recipe database
-- **Frackin Universe extensions** — FU-specific Lua APIs, custom damage types, research trees, extraction recipes, and additional asset fields
+- **1,200+ Lua API functions** — `world`, `player`, `entity`, `status`, `activeItem`, `animator`, `root`, and 48 more tables with full parameter docs and return types
+- **665 asset schema fields** — valid JSON fields for `.activeitem`, `.object`, `.monstertype`, `.projectile`, `.biome`, `.statuseffect`, and 33 more asset types
+- **7,180 crafting recipes** — every FU recipe, searchable by item or station
+- **2,636 extraction recipes** — centrifuge, sifter, rock crusher, extraction lab, and more
+- **395 research tree nodes** — FU research trees with costs, prerequisites, and unlocks
 
-The result: your AI assistant gives you **correct, specific answers** instead of educated guesses.
+All sourced from the actual game's C++ parsers (OpenStarbound), official Lua API docs, and the FrackinUniverse mod source. Works **completely offline**.
 
-## Quick Start
+---
+
+## Installation
+
+Choose the method that works best for you:
+
+### Option 1: Standalone executable (easiest)
+
+No programming experience needed. Just download and configure.
+
+1. Go to the [latest release](https://github.com/notreallycheeks/starbound-mcp/releases/latest)
+2. Download the executable for your platform:
+   - **Windows:** `starbound-mcp-win.exe`
+   - **macOS:** `starbound-mcp-macos`
+   - **Linux:** `starbound-mcp-linux`
+3. Also download `starbound.db` (the knowledge database)
+4. Place both files in the same folder (e.g., `C:\starbound-mcp\`)
+5. Add to your MCP config (see [Configuration](#configuration) below)
+
+### Option 2: npm (for developers)
+
+Requires [Node.js](https://nodejs.org/) 20+.
 
 ```bash
-# Clone
-git clone https://github.com/cheeks/starbound-mcp.git
+npm install -g starbound-mcp
+```
+
+Or run without installing:
+
+```bash
+npx starbound-mcp
+```
+
+### Option 3: Build from source (for contributors)
+
+```bash
+git clone https://github.com/notreallycheeks/starbound-mcp.git
 cd starbound-mcp
-
-# Install
 npm install
-
-# Build the database
-npm run seed
-
-# Build the server
 npm run build
 ```
 
-### Add to Claude Code
+To build the database yourself (requires cloning OpenStarbound and FrackinUniverse):
 
-Add to your Claude Code MCP settings (`~/.claude/claude_desktop_config.json` or project `.mcp.json`):
+```bash
+# Seed curated base data
+npm run seed
 
+# Extract from OpenStarbound C++ source (asset schemas + Lua API)
+npm run extract:openstarbound -- --source-path /path/to/OpenStarbound
+npm run extract:lua-docs -- --source-path /path/to/OpenStarbound
+
+# Extract from FrackinUniverse (recipes, research, extraction)
+npm run extract:fu -- --fu-path /path/to/FrackinUniverse
+```
+
+---
+
+## Configuration
+
+### Claude Code
+
+Add to your project's `.mcp.json` or `~/.claude.json`:
+
+**If using the standalone executable:**
+```json
+{
+  "mcpServers": {
+    "starbound": {
+      "command": "C:/starbound-mcp/starbound-mcp-win.exe"
+    }
+  }
+}
+```
+
+**If using npm (global install):**
+```json
+{
+  "mcpServers": {
+    "starbound": {
+      "command": "starbound-mcp"
+    }
+  }
+}
+```
+
+**If using npx:**
+```json
+{
+  "mcpServers": {
+    "starbound": {
+      "command": "npx",
+      "args": ["-y", "starbound-mcp"]
+    }
+  }
+}
+```
+
+**If built from source:**
 ```json
 {
   "mcpServers": {
@@ -47,20 +126,38 @@ Add to your Claude Code MCP settings (`~/.claude/claude_desktop_config.json` or 
 }
 ```
 
-### Add to Claude Desktop
+### Claude Desktop
 
-Add to Claude Desktop's config (`claude_desktop_config.json`):
+Add to your `claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
     "starbound": {
-      "command": "node",
-      "args": ["/path/to/starbound-mcp/dist/index.js"]
+      "command": "starbound-mcp"
     }
   }
 }
 ```
+
+### Custom database location
+
+Set the `STARBOUND_MCP_DB` environment variable to use a database at a custom path:
+
+```json
+{
+  "mcpServers": {
+    "starbound": {
+      "command": "starbound-mcp",
+      "env": {
+        "STARBOUND_MCP_DB": "/path/to/my/starbound.db"
+      }
+    }
+  }
+}
+```
+
+---
 
 ## Available Tools
 
@@ -69,64 +166,94 @@ Once connected, your AI assistant gains these tools:
 | Tool | Description |
 |---|---|
 | `search` | Broad natural language search across all modding knowledge |
-| `search_lua_api` | Search Lua API functions by name, table, or context |
-| `get_asset_schema` | Get the full JSON schema for any asset type |
+| `search_lua_api` | Search Lua API functions by name, table, or script context |
+| `get_asset_schema` | Get the full JSON schema for any asset type (.object, .activeitem, etc.) |
 | `list_asset_types` | List all known asset types and file extensions |
 | `list_lua_tables` | List all Lua API tables and their available contexts |
 | `lookup_recipe` | Search crafting recipes by item or station |
-| `lookup_fu_extraction` | Search FU extraction/centrifuge recipes |
+| `lookup_fu_extraction` | Search FU extraction/centrifuge/sifter recipes |
 | `lookup_fu_research` | Search FU research tree entries |
 
-## Works Offline
+### Example usage
 
-The entire knowledge base is stored in a local SQLite database. No internet required — perfect for modding sessions on the go.
+Just ask your AI naturally:
+
+- *"What fields are valid in a .activeitem file?"*
+- *"How do I spawn a projectile in Lua?"*
+- *"What's the recipe for an iron axe?"*
+- *"What can I get from centrifuging oystershellmaterial?"*
+- *"Show me all world.entityQuery parameters"*
+
+---
+
+## Database contents
+
+| Category | Count |
+|---|---|
+| Lua API functions | 1,203 |
+| Lua API tables | 55 |
+| Asset types | 39 |
+| Asset schema fields | 665 |
+| Crafting recipes (FU) | 7,180 |
+| Extraction/centrifuge recipes | 2,636 |
+| Research nodes | 395 |
+| Full-text search entries | 12,184 |
+
+### Data sources
+
+All data is extracted from authoritative sources — not scraped from wikis:
+
+- **[OpenStarbound](https://github.com/OpenStarbound/OpenStarbound)** C++ source — the actual game parsers that define every JSON field, type, and default value
+- **[OpenStarbound](https://github.com/OpenStarbound/OpenStarbound)** `doc/lua/` — 55 markdown files documenting every Lua API function
+- **[FrackinUniverse](https://github.com/sayterdarkwynd/FrackinUniverse)** mod source — all recipes, extraction configs, and research trees
+
+---
 
 ## Contributing
 
 This project is community-driven. The database is only as good as the data in it.
 
-### Adding data
+### Adding curated data
 
-The seed script (`src/db/seed.ts`) contains all the curated data. To add new entries:
+The seed script (`src/db/seed.ts`) contains hand-curated data with descriptions and examples. To improve it:
 
 1. Fork the repo
-2. Add entries to `src/db/seed.ts` using the helper functions
+2. Add entries to `src/db/seed.ts`
 3. Run `npm run seed` to verify
 4. Submit a PR
 
-### Data sources we're pulling from
+### Improving extraction scripts
 
-- [starbound-unofficial.readthedocs.io](https://starbound-unofficial.readthedocs.io/) — Lua API docs
-- [xStarbound Lua API docs](https://github.com/xStarbound/xStarbound) — Most current API reference
-- [Starbounder Wiki](https://starbounder.org/Modding:Portal) — Community modding wiki
-- [FrackinUniverse source](https://github.com/sayterdarkwynd/FrackinUniverse) — Full FU mod source
-- [fudocgenerator](https://github.com/edwardspec/fudocgenerator) — Structured FU data extractor
+The extraction scripts in `src/scripts/` parse data from OpenStarbound and FU source automatically. If you find missing fields or incorrect parsing:
 
-### Extraction scripts
+1. Check the relevant `Star*Database.cpp` file in OpenStarbound
+2. Update the regex patterns or parsing logic in the extraction script
+3. Submit a PR
 
-For bulk data import from your Starbound installation:
+### Reporting issues
 
-```bash
-# Extract vanilla asset schemas from unpacked assets
-npm run extract:vanilla -- --assets-path "/path/to/Starbound/assets/packed"
+If the MCP server gives your AI wrong information about Starbound modding, [open an issue](https://github.com/notreallycheeks/starbound-mcp/issues) with:
+- What you asked
+- What the AI said
+- What the correct answer is
 
-# Extract FU data from the FU mod folder
-npm run extract:fu -- --fu-path "/path/to/FrackinUniverse"
-```
+---
 
 ## Roadmap
 
-- [ ] Core Lua API coverage (vanilla)
-- [ ] Complete asset schema coverage (all vanilla asset types)
-- [ ] Frackin Universe Lua API extensions
-- [ ] FU crafting recipe database
-- [ ] FU extraction/centrifuge recipe database
-- [ ] FU research tree data
-- [ ] Auto-extraction from game assets
-- [ ] Auto-extraction from FU source
+- [x] Core Lua API coverage (vanilla + OpenStarbound extensions)
+- [x] Asset schema extraction from C++ source
+- [x] FU crafting recipe database
+- [x] FU extraction/centrifuge recipe database
+- [x] FU research tree data
+- [x] Full-text search across everything
+- [ ] Standalone executables (Windows, macOS, Linux)
+- [ ] npm package publishing
+- [ ] Auto-extraction from unpacked game assets
 - [ ] Patch/merge documentation (how `.patch` files work)
 - [ ] Common modding patterns and examples
 - [ ] OpenStarbound/xStarbound extended API coverage
+- [ ] Interactive database explorer web UI
 
 ## License
 

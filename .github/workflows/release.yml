@@ -1,0 +1,156 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-database:
+    name: Build Database
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build TypeScript
+        run: npm run build
+
+      - name: Clone OpenStarbound
+        run: git clone --depth 1 https://github.com/OpenStarbound/OpenStarbound.git ../OpenStarbound
+
+      - name: Clone FrackinUniverse
+        run: git clone --depth 1 https://github.com/sayterdarkwynd/FrackinUniverse.git ../FrackinUniverse
+
+      - name: Seed base data
+        run: npx tsx src/db/seed.ts
+
+      - name: Extract OpenStarbound schemas
+        run: npx tsx src/scripts/extract-openstarbound.ts -- --source-path ../OpenStarbound
+
+      - name: Extract Lua API docs
+        run: npx tsx src/scripts/extract-lua-docs.ts -- --source-path ../OpenStarbound
+
+      - name: Extract FrackinUniverse data
+        run: npx tsx src/scripts/extract-fu.ts -- --fu-path ../FrackinUniverse
+
+      - name: Upload database artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: starbound-db
+          path: starbound.db
+
+  build-executables:
+    name: Build ${{ matrix.target }} executable
+    needs: build-database
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            target: windows
+            artifact: starbound-mcp-win.exe
+            bun-target: bun-windows-x64
+          - os: ubuntu-latest
+            target: linux
+            artifact: starbound-mcp-linux
+            bun-target: bun-linux-x64
+          - os: macos-latest
+            target: macos
+            artifact: starbound-mcp-macos
+            bun-target: bun-darwin-arm64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Download database
+        uses: actions/download-artifact@v4
+        with:
+          name: starbound-db
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build executable
+        run: bun build src/index.ts --compile --target=${{ matrix.bun-target }} --outfile ${{ matrix.artifact }}
+
+      - name: Upload executable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}
+
+  release:
+    name: Create Release
+    needs: [build-database, build-executables]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/starbound-mcp-win.exe/starbound-mcp-win.exe
+            artifacts/starbound-mcp-linux/starbound-mcp-linux
+            artifacts/starbound-mcp-macos/starbound-mcp-macos
+            artifacts/starbound-db/starbound.db
+          generate_release_notes: true
+          body: |
+            ## Installation
+
+            ### Standalone executable (no dependencies needed)
+            1. Download the executable for your platform and `starbound.db`
+            2. Place both files in the same folder
+            3. Add to your MCP config (see README)
+
+            ### npm
+            ```bash
+            npm install -g starbound-mcp
+            ```
+
+  publish-npm:
+    name: Publish to npm
+    needs: build-database
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Download database
+        uses: actions/download-artifact@v4
+        with:
+          name: starbound-db
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Publish to npm
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
